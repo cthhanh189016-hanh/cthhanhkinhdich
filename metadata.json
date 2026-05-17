@@ -1,0 +1,8 @@
+{
+  "name": "Kinh Dịch Linh Quẻ",
+  "description": "Ứng dụng gieo quẻ Kinh Dịch cổ phong, kết hợp AI để giải mã quẻ xăm và đưa ra lời khuyên về công danh, tình duyên, tài lộc.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
