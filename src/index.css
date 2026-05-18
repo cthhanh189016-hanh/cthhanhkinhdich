@@ -6,25 +6,29 @@
   --font-serif: "Cormorant Garamond", serif;
   --font-display: "Playfair Display", serif;
   
-  --color-obsidian: #0E1111;
-  --color-gold-matte: #C5A059;
+  --color-obsidian: #000000;
+  --color-gold-matte: #A67C37;
   --color-gold-bright: #D4AF37;
-  --color-ivory: #F5F5F0;
-  --color-cinnabar: #7E2217;
+  --color-ivory: #F2EBE5;
+  --color-cinnabar: #641810;
 }
 
 @layer base {
   body {
-    @apply antialiased bg-ivory text-obsidian;
+    @apply antialiased bg-ivory text-obsidian font-serif font-medium;
     background-image: 
-      radial-gradient(circle at 50% 50%, rgba(197, 160, 89, 0.08) 0%, transparent 100%),
+      radial-gradient(circle at 50% 50%, rgba(176, 137, 75, 0.12) 0%, transparent 100%),
       url('https://www.transparenttextures.com/patterns/natural-paper.png');
     background-attachment: fixed;
   }
 }
 
 .prose h1, .prose h2, .prose h3 {
-  @apply font-display text-obsidian;
+  @apply font-display text-obsidian font-bold;
+}
+
+.prose strong {
+  @apply text-obsidian font-bold;
 }
 
 /* Luxurious Scrollbar */
@@ -39,15 +43,15 @@
 }
 
 .gold-glow {
-  box-shadow: 0 0 30px rgba(197, 160, 89, 0.1);
+  box-shadow: 0 0 30px rgba(176, 137, 75, 0.15);
 }
 
 .border-gold-thin {
-  border: 1px solid rgba(197, 160, 89, 0.2);
+  border: 1px solid rgba(176, 137, 75, 0.3);
 }
 
 .bg-paper-light {
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(197, 160, 89, 0.2);
+  border: 1px solid rgba(176, 137, 75, 0.2);
 }

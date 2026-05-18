@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HexagramDisplay } from './HexagramDisplay';
 import { generateLines, linesToBinary, getHexagramByBinary, getChangingLines, getTrigrams, type Hexagram } from '../lib/hexagrams';
-import { Sparkles, Coins, RefreshCw, ArrowRight, Download, FileText, Share2 } from 'lucide-react';
+import { Sparkles, Coins, RefreshCw, ArrowRight, Download, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { cn } from '../lib/utils';
 
 const ASPECTS = [
@@ -72,107 +73,29 @@ export const DivinationFlow: React.FC = () => {
     setQuestion('');
   };
 
-  const handleExportWord = async () => {
+  const handleExportPDF = async () => {
     if (!hexagram) return;
     setIsExporting(true);
     try {
       const element = document.getElementById('iching-export-card');
       if (!element) return;
       
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#0E1111' });
-      const imageBase64 = canvas.toDataURL('image/png');
+      const canvas = await html2canvas(element, { scale: 3, backgroundColor: '#1A0F0E' });
+      const imgData = canvas.toDataURL('image/png');
       
-      const payload = {
-        title: `QUẺ SỐ ${hexagram.id}: ${hexagram.vietnamese}`,
-        image_base64: imageBase64,
-        overview: hexagram.meaning,
-        career: selectedAspect.id === 'career' ? interpretation : interpretation.slice(0, 300) + "...",
-        love: selectedAspect.id === 'love' ? interpretation : "Giao hòa cảm ứng, tùy duyên mà định.",
-        warning: "Thái cực tất bĩ — Khi ở đỉnh cao hãy giữ khiêm tốn, khi bĩ cực hãy vững lòng tin."
-      };
-
-      const response = await fetch('/api/export-word', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width / 3, canvas.height / 3]
       });
       
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Luan_Que_${hexagram.vietnamese}.docx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 3, canvas.height / 3);
+      pdf.save(`Luan_Que_${hexagram.vietnamese}.pdf`);
     } catch (error) {
       console.error(error);
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const handleExportHtml = () => {
-    if (!hexagram) return;
-    
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linh Quẻ Chiêm Bái - ${hexagram.vietnamese}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-        :root { --gold: #C5A059; --obsidian: #0E1111; --ivory: #F5F5F0; }
-        body { background: var(--ivory); color: var(--obsidian); font-family: 'Inter', sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
-        .card { max-width: 800px; margin: 40px auto; background: white; padding: 60px; border-radius: 40px; border: 1px solid rgba(197,160,89,0.2); box-shadow: 0 30px 60px rgba(0,0,0,0.05); }
-        h1 { font-family: 'Playfair Display', serif; font-size: 48px; margin: 0; text-transform: uppercase; letter-spacing: -1px; text-align: center; }
-        .subtitle { text-align: center; color: var(--gold); font-family: 'Playfair Display', serif; font-style: italic; font-size: 20px; margin-top: 10px; }
-        .hexagram { padding: 40px 0; text-align: center; }
-        .interpretation { margin-top: 40px; font-family: 'Playfair Display', serif; font-size: 18px; color: rgba(14,17,17,0.8); }
-        .interpretation h3 { color: var(--gold); text-transform: uppercase; font-size: 14px; letter-spacing: 2px; }
-        .interpretation blockquote { border-left: 2px solid var(--gold); padding-left: 20px; font-style: italic; margin: 20px 0; }
-        .footer { text-align: center; margin-top: 60px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--gold); }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>${hexagram.vietnamese}</h1>
-        <div class="subtitle">Quẻ số ${hexagram.id}: ${hexagram.pinyin}</div>
-        
-        <div class="hexagram">
-            <div style="font-size: 80px; color: var(--gold)">☯</div>
-            <p style="font-style: italic; color: var(--gold)">"${hexagram.image}"</p>
-        </div>
-
-        <div class="interpretation">
-            <h3>TỔNG QUAN BẢN THỂ</h3>
-            <p>${hexagram.meaning}</p>
-            
-            <hr style="border: none; border-top: 1px solid rgba(197,160,89,0.1); margin: 40px 0;">
-            
-            <h3>GIẢI MÃ THIÊN CƠ</h3>
-            <div style="white-space: pre-wrap;">${interpretation}</div>
-        </div>
-
-        <div class="footer">
-            © Bản quyền Hạnh Châu - Kinh Dịch Linh Quẻ Chiêm Bái
-        </div>
-    </div>
-</body>
-</html>`;
-
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `LinhQue_${hexagram.vietnamese}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -426,7 +349,7 @@ export const DivinationFlow: React.FC = () => {
               </button>
 
               <button
-                onClick={handleExportWord}
+                onClick={handleExportPDF}
                 disabled={isExporting}
                 className="flex items-center justify-center gap-3 md:gap-4 px-8 md:px-12 py-5 md:py-6 bg-obsidian text-ivory rounded-full hover:bg-black transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50 font-bold uppercase tracking-[0.3em] text-[10px]"
               >
@@ -435,37 +358,31 @@ export const DivinationFlow: React.FC = () => {
                 ) : (
                   <FileText className="w-4 h-4 text-gold-bright" />
                 )}
-                <span>TẢI BẢN LUẬN QUẺ (.DOCX)</span>
-              </button>
-
-              <button
-                onClick={handleExportHtml}
-                className="flex items-center justify-center gap-3 md:gap-4 px-8 md:px-12 py-5 md:py-6 bg-white text-obsidian border-2 border-obsidian rounded-full hover:bg-obsidian hover:text-ivory transition-all hover:scale-105 active:scale-95 shadow-xl font-bold uppercase tracking-[0.3em] text-[10px]"
-              >
-                <Share2 className="w-4 h-4 text-gold-matte" />
-                <span>LƯU TRANG OFFLINE (.HTML)</span>
+                <span>TẢI BẢN LUẬN QUẺ (.PDF)</span>
               </button>
             </div>
 
 
             {/* Hidden export card for html2canvas */}
             <div className="fixed -left-[9999px] top-0 pointer-events-none">
-              <div id="iching-export-card" style={{ background: '#0E1111', padding: '40px', border: '1px solid #C5A059', textAlign: 'center', width: '380px' }}>
-                <h3 style={{ color: '#C5A059', fontFamily: "'Times New Roman', serif", letterSpacing: '1px', margin: '0 0 20px 0', fontSize: '18px', textTransform: 'uppercase' }}>
+              <div id="iching-export-card" style={{ background: '#1A0F0E', padding: '60px', border: '2px solid #B0894B', textAlign: 'center', width: '500px' }}>
+                <h2 style={{ color: '#B0894B', fontFamily: "'Playfair Display', serif", letterSpacing: '2px', margin: '0 0 10px 0', fontSize: '10px', textTransform: 'uppercase' }}>
+                    Kinh Dịch - Linh Quẻ Chiêm Bái
+                </h2>
+                <h3 style={{ color: '#E7DCD3', fontFamily: "'Playfair Display', serif", letterSpacing: '1px', margin: '0 0 30px 0', fontSize: '24px', textTransform: 'uppercase', borderBottom: '1px solid rgba(176,137,75,0.3)', paddingBottom: '20px' }}>
                     QUẺ SỐ {hexagram?.id}: {hexagram?.vietnamese}
                 </h3>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '30px 0' }}>
-                    {/* Manual lines for export if component styles are tricky */}
-                    <div className="flex flex-col-reverse gap-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', margin: '40px 0' }}>
+                    <div className="flex flex-col-reverse gap-4">
                       {hexagram?.binary.split('').map((line, i) => (
-                        <div key={i} className="flex gap-4">
+                        <div key={i} className="flex gap-5">
                           {line === '1' ? (
-                            <div style={{ height: '5px', width: '160px', background: '#C5A059', opacity: '0.8' }}></div>
+                            <div style={{ height: '8px', width: '220px', background: '#B0894B' }}></div>
                           ) : (
                             <>
-                              <div style={{ height: '5px', width: '72px', background: '#C5A059', opacity: '0.8' }}></div>
-                              <div style={{ height: '5px', width: '72px', background: '#C5A059', opacity: '0.8' }}></div>
+                              <div style={{ height: '8px', width: '100px', background: '#B0894B' }}></div>
+                              <div style={{ height: '8px', width: '100px', background: '#B0894B' }}></div>
                             </>
                           )}
                         </div>
@@ -473,9 +390,28 @@ export const DivinationFlow: React.FC = () => {
                     </div>
                 </div>
                 
-                <p style={{ color: '#F5F5F0', fontSize: '13px', fontStyle: 'italic', fontFamily: 'serif', margin: '20px 0' }}>
-                    "{hexagram?.image}"
-                </p>
+                <div style={{ textAlign: 'left', margin: '40px 0', borderTop: '1px solid rgba(176,137,75,0.2)', paddingTop: '30px' }}>
+                  <h4 style={{ color: '#B0894B', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '4px', margin: '0 0 10px 0' }}>Tượng Quẻ</h4>
+                  <p style={{ color: '#E7DCD3', fontSize: '18px', fontStyle: 'italic', fontFamily: 'serif', margin: '0 0 30px 0' }}>
+                      "{hexagram?.image}"
+                  </p>
+                  
+                  <h4 style={{ color: '#B0894B', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '4px', margin: '0 0 10px 0' }}>Tổng Quan</h4>
+                  <p style={{ color: '#E7DCD3', fontSize: '14px', fontFamily: 'serif', lineHeight: '1.6', margin: '0 0 30px 0', opacity: '0.9' }}>
+                      {hexagram?.meaning}
+                  </p>
+
+                  <h4 style={{ color: '#B0894B', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '4px', margin: '0 0 10px 0' }}>Thánh Ý Chiêm Giải ({selectedAspect.label})</h4>
+                  <div style={{ color: '#E7DCD3', fontSize: '13px', fontFamily: 'serif', lineHeight: '1.8', opacity: '0.8' }}>
+                    <ReactMarkdown>{interpretation}</ReactMarkdown>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid rgba(176,137,75,0.2)', paddingTop: '20px', marginTop: '40px' }}>
+                  <p style={{ color: '#B0894B', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                    Bản quyền Hạnh Châu • Linh Quẻ Chiêm Bái
+                  </p>
+                </div>
               </div>
             </div>
           </motion.div>

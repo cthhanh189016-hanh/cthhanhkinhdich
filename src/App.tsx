@@ -14,7 +14,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'divination' | 'library' | 'about'>('divination');
 
   return (
-    <div className="min-h-screen bg-ivory text-obsidian font-sans selection:bg-gold-matte/20">
+    <div 
+      className="min-h-screen bg-ivory text-obsidian font-sans selection:bg-gold-matte/20"
+    >
       {/* Background patterns */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.15] overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-gold-matte/10 rounded-full blur-[150px]" />
