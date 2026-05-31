@@ -23,6 +23,57 @@ async function startServer() {
     }
   });
 
+  // Helper to generate content with exponential backoff retries and fallback models to prevent 503/transient errors
+  async function generateContentWithRetry(contents: string, systemInstruction?: string) {
+    // Rely on official stable models: gemini-3.5-flash is our primary, gemini-3.1-flash-lite as fallback, and gemini-3-flash-preview as last resort
+    const models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview"];
+    let lastError: any = null;
+
+    for (const model of models) {
+      const maxRetries = 3;
+      let delay = 1000; // Start with 1 second backoff
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[Gemini API] Prompting model: ${model} (Attempt ${attempt}/${maxRetries})...`);
+          const response = await ai.models.generateContent({
+            model,
+            contents,
+            config: systemInstruction ? { systemInstruction } : undefined,
+          });
+
+          if (response && response.text) {
+            console.log(`[Gemini API] Successfully generated response with model: ${model}`);
+            return response;
+          }
+          throw new Error("Empty text in Gemini response");
+        } catch (error: any) {
+          lastError = error;
+          const status = error?.status || error?.error?.status || error?.code || error?.error?.code;
+          const msg = error?.message || error?.error?.message || "";
+          
+          console.warn(
+            `[Gemini API Warning] Model ${model} (Attempt ${attempt}/${maxRetries}) failed. Status: ${status}. Detail: ${msg}`
+          );
+
+          // For standard API errors that are non-retryable (like 400 Bad Request, invalid key)
+          if (status === 400 || (typeof status === 'number' && status >= 400 && status < 500 && status !== 429)) {
+            console.error(`[Gemini API Error] Non-retryable error encountered on model ${model}. Moving to next option.`);
+            break; 
+          }
+
+          if (attempt < maxRetries) {
+            console.log(`[Gemini API] Waiting ${delay}ms before retrying...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 2; // Exponential base
+          }
+        }
+      }
+    }
+
+    throw lastError || new Error("Failed to generate content with all configured Gemini models");
+  }
+
   // API to get AI interpretation for a hexagram
   app.post("/api/interpret", async (req, res) => {
     const { hexagramName, aspect, extraInfo } = req.body;
@@ -43,13 +94,11 @@ Vui lòng cung cấp:
 
 Trả lời bằng tiếng Việt, định dạng Markdown. Trình bày thanh nhã, dễ hiểu.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-      });
+      const response = await generateContentWithRetry(prompt);
 
       res.json({ interpretation: response.text });
     } catch (error: any) {
+
       console.error("Gemini API Error:", error);
       res.status(500).json({ error: "Không thể giải quẻ vào lúc này. Vui lòng thử lại sau." });
     }
